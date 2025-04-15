@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 80%;
+      max-width: 600px;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      margin: 20px 0;
+    }
+
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+
+    h3 {
+      margin-top: 20px;
+      color: #333;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    ul li {
+      margin: 10px 0;
+      background-color: #f0f0f0;
+      padding: 10px;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    ul li button {
+      background-color: #e74c3c;
+      border: none;
+      padding: 5px 10px;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    ul li button:hover {
+      background-color: #c0392b;
+    }
+
+    .logout-btn {
+      margin-top: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Checklist</h2>
+    <form id="formChecklist">
+      <input type="text" name="title" placeholder="Checklist title" required>
+      <button type="submit">Add Checklist</button>
+    </form>
+
+    <ul id="checklist-container"></ul>
+
+    <h3>Add Item</h3>
+    <form id="formItem">
+      <input type="text" name="name" placeholder="Item name" required>
+      <input type="number" name="checklist_id" placeholder="Checklist ID" required>
+      <button type="submit">Add Item</button>
+    </form>
+
+    <div class="logout-btn">
+      <form action="../auth/logout.php" method="POST">
+        <button type="submit">Logout</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Ambil dan tampilkan checklist
+    function loadChecklists() {
+      fetch('../checklist/list.php')
+        .then(res => res.json())
+        .then(data => {
+          const container = document.getElementById('checklist-container');
+          container.innerHTML = '';
+
+          if (data.length === 0) {
+            container.innerHTML = '<li>Belum ada checklist.</li>';
+            return;
+          }
+
+          data.forEach(checklist => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <strong>${checklist.title}</strong> (ID: ${checklist.id})
+              <button onclick="showItems(${checklist.id})">Lihat Items</button>
+              <button onclick="deleteChecklist(${checklist.id})">Hapus</button>
+              <ul id="items-${checklist.id}"></ul>
+            `;
+            container.appendChild(li);
+          });
+        });
+    }
+
+    // Tambah checklist
+    document.getElementById('formChecklist').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+
+      fetch('../checklist/create.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        this.reset();
+        loadChecklists();
+      });
+    });
+
+    // Tambah item
+    document.getElementById('formItem').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+
+      fetch('../item/create.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        this.reset();
+        loadChecklists();
+      });
+    });
+
+    // Hapus checklist
+    function deleteChecklist(id) {
+      if (!confirm('Yakin ingin hapus checklist ini?')) return;
+
+      const formData = new FormData();
+      formData.append('id', id);
+
+      fetch('../checklist/delete.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        loadChecklists();
+      });
+    }
+
+    // Tampilkan items di checklist tertentu
+    function showItems(checklist_id) {
+      fetch(`../checklist/detail.php?id=${checklist_id}`)
+        .then(res => res.json())
+        .then(items => {
+          const ul = document.getElementById(`items-${checklist_id}`);
+          ul.innerHTML = '';
+
+          if (items.length === 0) {
+            ul.innerHTML = '<li>(Kosong)</li>';
+            return;
+          }
+
+          items.forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+              ${item.name} - ${item.is_completed == 1 ? "✅" : "❌"}
+            `;
+            ul.appendChild(li);
+          });
+        });
+    }
+
+    // Load checklist saat halaman dibuka
+    window.onload = loadChecklists;
+  </script>
+
+</body>
+</html>
